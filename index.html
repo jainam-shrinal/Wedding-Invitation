@@ -379,6 +379,103 @@ nav a{background:rgba(255,255,255,.64)!important;border:1px solid rgba(197,177,1
 nav a:hover{background:linear-gradient(135deg,#e8eee4,#f7eee8)!important;color:#7b7162!important}
 @media(prefers-reduced-motion:reduce){.btn,a.btn,nav a{transition:none!important}.btn:hover,a.btn:hover,nav a:hover{transform:none}}
 
+
+/* ===== 10-SECOND CINEMATIC ENVELOPE OPENING ===== */
+
+.env {
+  transform-style: preserve-3d;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.env.open {
+  animation: envelopeReveal 10s ease-in-out forwards;
+}
+
+.env.open .flap {
+  transition: transform 2.8s cubic-bezier(.2,.75,.25,1),
+              z-index 0s 1.4s;
+  transform: rotateX(180deg);
+}
+
+.env.open .seal {
+  opacity: 0;
+  transform: scale(.2) rotate(35deg);
+  transition: all 1s ease;
+}
+
+.env.open .letter {
+  transition: transform 3s cubic-bezier(.16,.8,.25,1) 2s;
+  transform: translateY(-90%) scale(1.12);
+  z-index: 6;
+}
+
+.env.open .eb {
+  animation: envelopeGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes envelopeReveal {
+  0%, 15% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-8px) scale(1.025); }
+  65% { transform: translateY(-12px) scale(1.04); }
+  85%, 100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes envelopeGlow {
+  from { box-shadow: 0 15px 35px #0002, 0 0 8px #bd914555; }
+  to { box-shadow: 0 15px 35px #0002, 0 0 35px #bd914599; }
+}
+
+/* Floating golden particles */
+.env-wrap {
+  isolation: isolate;
+  position: relative;
+}
+
+.env-wrap::after {
+  content: "✦  ·  ✧  ·  ✦  ·  ✧  ·  ✦";
+  position: absolute;
+  z-index: 8;
+  color: #bd9145;
+  font-size: 19px;
+  letter-spacing: 12px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.env-wrap:has(.env.open)::after {
+  animation: goldenSparkles 5s ease-in-out 1.5s 1 forwards;
+}
+
+@keyframes goldenSparkles {
+  0% { opacity: 0; transform: translateY(30px) scale(.7); }
+  35% { opacity: .9; transform: translateY(-15px) scale(1.1); }
+  75% { opacity: .7; transform: translateY(-45px) scale(1); }
+  100% { opacity: 0; transform: translateY(-70px) scale(.8); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .env.open { animation: none; }
+}
+
+
+ 
+
+/* ===== 10-second cinematic envelope reveal ===== */
+.env{touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer}
+.env.open{animation:envelopeFloat10 10s ease-in-out forwards;transform-origin:center center}
+.env.open .flap{transition:transform 2.8s cubic-bezier(.2,.75,.25,1),z-index 0s 1.4s;transform:rotateX(180deg);z-index:1}
+.env.open .seal{opacity:0;transform:scale(.2) rotate(35deg);transition:all .8s ease}
+.env.open .letter{transition:transform 3s cubic-bezier(.16,.8,.25,1) 2s;transform:translateY(-90%) scale(1.12);z-index:6}
+.env.open .eb{animation:envelopeGlow10 2s ease-in-out infinite alternate}
+@keyframes envelopeFloat10{0%{transform:translateY(0) scale(.92)}12%{transform:translateY(0) scale(1)}25%{transform:translateY(-7px) scale(1.07)}45%{transform:translateY(-10px) scale(1.12)}62%{transform:translateY(-6px) scale(1.04)}78%{transform:translateY(-3px) scale(1.09)}100%{transform:translateY(0) scale(1)}}
+@keyframes envelopeGlow10{from{box-shadow:0 15px 35px #0002,0 0 8px #bd914555}to{box-shadow:0 15px 35px #0002,0 0 32px #bd914599}}
+/* Circular golden ripple spreading around the envelope when it opens */
+.env-wrap::before{content:"";position:absolute;left:50%;top:50%;width:clamp(150px,55vw,340px);aspect-ratio:1;border:1px solid rgba(189,145,69,.65);border-radius:50%;transform:translate(-50%,-50%) scale(.55);opacity:0;pointer-events:none;z-index:0}
+.env-wrap:has(.env.open)::before{animation:roundRipple10 3.2s ease-out .15s 2}
+@keyframes roundRipple10{0%{transform:translate(-50%,-50%) scale(.55);opacity:0;box-shadow:0 0 0 0 rgba(189,145,69,.22)}18%{opacity:.8}100%{transform:translate(-50%,-50%) scale(1.55);opacity:0;box-shadow:0 0 0 18px rgba(189,145,69,0)}}
+@media (prefers-reduced-motion:reduce){.env.open{animation:none}.env-wrap:has(.env.open)::before{animation:none}}
 </style>
 </head>
 <body class="lock">
@@ -517,21 +614,38 @@ var CFG={target:new Date("2027-01-23T10:00:00"),venue:"Mahavir Bhawan"};
 // --------------------
 var env=document.getElementById("env"),intro=document.getElementById("intro"),opened=false;
 var introMusic=document.getElementById("introMusic"),weddingMusic=document.getElementById("weddingMusic");
-function startTrack(track){
+var fadeTimers=[];
+function fadeAudio(track,target,duration,pauseAtEnd){
  if(!track)return;
- track.volume=0.55;
- var play=track.play();
- if(play&&typeof play.catch==="function")play.catch(function(){/* Browser may require another tap or local MP3 files. */});
+ var start=track.volume,steps=60,step=0,interval=duration/steps;
+ var timer=setInterval(function(){
+  step++; track.volume=Math.max(0,Math.min(1,start+(target-start)*step/steps));
+  if(step>=steps){clearInterval(timer);track.volume=target;if(pauseAtEnd&&target===0){track.pause();track.currentTime=0;}}
+ },interval); fadeTimers.push(timer);
+}
+function playFaded(track){
+ if(!track)return Promise.resolve();
+ track.volume=0;
+ var result=track.play();
+ return result.then(function(){fadeAudio(track,0.55,2500,false);}).catch(function(err){console.warn("Audio playback was blocked or failed:",err);});
 }
 function openEnv(){if(opened)return;opened=true;
- startTrack(introMusic);
- env.classList.add("open");document.getElementById("hint").style.opacity=0;
+ // This click/tap is the user's gesture, so start the first track immediately.
+ if(introMusic){introMusic.currentTime=0;playFaded(introMusic);}
+ env.classList.add("open");
+ var hint=document.getElementById("hint");if(hint)hint.style.opacity=0;
+ // Ten-second envelope and invitation-card reveal.
  setTimeout(function(){
    intro.classList.add("gone");document.body.classList.remove("lock");reveal();
-   if(introMusic){introMusic.pause();introMusic.currentTime=0;} setTimeout(function(){startTrack(weddingMusic);},2000);
- },3100);
- setTimeout(function(){intro.style.display="none"},4300)}
+   // Crossfade both tracks rather than abruptly stopping the first one.
+   if(weddingMusic){weddingMusic.currentTime=0;playFaded(weddingMusic);}
+   if(introMusic)fadeAudio(introMusic,0,3500,true);
+ },10000);
+ setTimeout(function(){intro.style.display="none"},11200);
+}
+// The envelope itself is the tap target on phones; click also supports mouse and keyboard.
 env.addEventListener("click",openEnv);
+env.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();openEnv();}});
 function reveal(){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}})},{threshold:.15});
  document.querySelectorAll(".rv").forEach(function(el){io.observe(el)})}
 // photos: paste image data-URIs or paths into PHOTOS; couple portraits into COUPLE
